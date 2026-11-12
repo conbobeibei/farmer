@@ -1,814 +1,984 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import {
   Users, User, Sprout, ClipboardList, Package, Cpu,
-  LogOut, Bell, CheckCircle, Clock, AlertTriangle,
-  Plus, Droplets, Map, Activity
+  Bell, CheckCircle, Clock, AlertTriangle, Plus, Droplets,
+  Map, Activity, BarChart3, RefreshCw, ShieldAlert, ChevronRight, Sparkles, Layers
 } from 'lucide-react';
 
 // ==========================================
-// 1. SEED DATA & CONSTANTS
+// SEED DATA (Chuẩn bị theo báo cáo)
 // ==========================================
 const SEED_USERS = [
-  { id: 'U001', name: 'Nguyễn Văn Quản Lý', role: 'MANAGER', maxTasks: 10 },
-  { id: 'U002', name: 'Trần Văn Nhân', role: 'WORKER', maxTasks: 3 },
-  { id: 'U003', name: 'Lê Thị Viên', role: 'WORKER', maxTasks: 4 }
+  { user_id: 'U001', username: 'manager1', full_name: 'Nguyễn Văn Quản Lý', role: 'MANAGER', max_tasks_per_day: 10 },
+  { user_id: 'U002', username: 'worker1', full_name: 'Trần Văn Nhân', role: 'WORKER', max_tasks_per_day: 3 },
+  { user_id: 'U003', username: 'worker2', full_name: 'Lê Thị Viên', role: 'WORKER', max_tasks_per_day: 4 },
 ];
 
 const SEED_PLOTS = [
-  { id: 'P001', name: 'Lô đất A1 - Trồng Cà chua', expectedYield: 2000, area: 1500, type: 'DAT_TRONG' },
-  { id: 'P002', name: 'Chuồng nuôi A2 - Lợn thịt', expectedYield: 1500, area: 800, type: 'KHU_CHAN_NUOI' }
-];
-
-const SEED_INVENTORY = [
-  { id: 'INV001', name: 'Phân bón NPK', quantity: 100, unit: 'Bao', type: 'MATERIAL' },
-  { id: 'INV002', name: 'Cà chua loại 1', quantity: 550, unit: 'kg', type: 'PRODUCT' }
+  {
+    plot_id: 'P001',
+    plot_name: 'Lô đất A1 - Trồng Cà chua',
+    area_m2: 1500,
+    zone_type: 'DAT_TRONG',
+    status: 'SINH_TRUONG',
+    expected_yield_kg: 2000,
+    crop: { crop_id: 'C001', crop_name: 'Cà chua Rita', category: 'CAY_TRONG', plant_date: '2026-09-01', growth_stage: 'Ra hoa kết trái' }
+  },
+  {
+    plot_id: 'P002',
+    plot_name: 'Chuồng nuôi A2 - Lợn thịt',
+    area_m2: 800,
+    zone_type: 'KHU_CHAN_NUOI',
+    status: 'SAN_SANG_THU_HOACH',
+    expected_yield_kg: 1500,
+    crop: { crop_id: 'C002', crop_name: 'Lợn thịt hướng nạc', category: 'VAT_NUOI', plant_date: '2026-06-15', growth_stage: 'Xuất chuồng' }
+  }
 ];
 
 const SEED_TASKS = [
-  { id: 'T001', plotId: 'P001', workerId: 'U002', type: 'Bón phân', status: 'CHO_GIAO', date: new Date().toISOString() },
-  { id: 'T002', plotId: 'P001', workerId: 'U002', type: 'Tưới nước', status: 'DANG_THUC_HIEN', date: new Date().toISOString() }
+  {
+    task_id: 'T001',
+    plan_name: 'Kế hoạch bón phân tuần 10',
+    plot_id: 'P001',
+    worker_id: 'U002',
+    task_type: 'BON_PHAN',
+    due_date: '2026-11-12',
+    status: 'DA_GIAO',
+    note: 'Bón phân NPK đợt 2',
+    material_id: 'M001',
+    material_qty: 2
+  },
+  {
+    task_id: 'T002',
+    plan_name: 'Kế hoạch tưới nước tuần 10',
+    plot_id: 'P001',
+    worker_id: 'U003',
+    task_type: 'TUOI_NUOC',
+    due_date: '2026-11-12',
+    status: 'HOAN_THANH',
+    note: 'Tưới nước tự động 30 phút',
+    material_id: null,
+    material_qty: 0
+  }
+];
+
+const SEED_MATERIALS = [
+  { material_id: 'M001', material_name: 'Phân bón NPK 16-16-8', unit: 'Bao 50kg', stock_qty: 100 },
+  { material_id: 'M002', material_name: 'Thức ăn hỗn hợp cho lợn', unit: 'Bao 25kg', stock_qty: 250 },
+];
+
+const SEED_INVENTORY = [
+  { item_id: 'INV001', product_name: 'Cà chua Rita', quality_grade: 'Loại 1', quantity_kg: 550, last_updated: '2026-11-08 16:30' },
+];
+
+const SEED_HARVEST_LOGS = [
+  {
+    harvest_id: 'H001',
+    plot_id: 'P001',
+    recorded_by: 'U002',
+    harvest_date: '2026-11-08 16:30',
+    quantity_kg: 550,
+    quality_grade: 'Loại 1',
+    note: 'Thu hoạch đợt 1'
+  }
+];
+
+const SEED_SENSOR_READINGS = [
+  { reading_id: 'R001', sensor_id: 'S001', plot_id: 'P001', location: 'Góc Tây Bắc Lô A1', timestamp: '2026-11-12 08:00', temperature: 28.5, humidity: 75.0, soil_moisture: 42.0, light_level: 12000 },
+  { reading_id: 'R002', sensor_id: 'S001', plot_id: 'P001', location: 'Góc Tây Bắc Lô A1', timestamp: '2026-11-12 12:00', temperature: 32.0, humidity: 65.0, soil_moisture: 35.5, light_level: 25000 },
 ];
 
 const SEED_NOTIFICATIONS = [
-  { id: 'N001', title: 'Hệ thống', message: 'Hệ thống quản lý nông trại đã khởi động.', date: new Date().toISOString(), isRead: false }
+  { notification_id: 'N001', user_id: 'U001', title: 'Ghi nhận thu hoạch đợt 1', content: 'Nhân viên Trần Văn Nhân vừa ghi nhận 550kg Cà chua Rita Loại 1.', is_read: false, created_at: '2026-11-08 16:30' }
 ];
 
-// ==========================================
-// 2. MAIN APP COMPONENT & STATE MANAGEMENT
-// ==========================================
+const PLOT_STATUS_MAP = {
+  TRONG: { label: 'Trống', color: 'bg-slate-100 text-slate-700 border-slate-200' },
+  SINH_TRUONG: { label: 'Đang sinh trưởng', color: 'bg-emerald-50 text-emerald-700 border-emerald-200' },
+  SAN_SANG_THU_HOACH: { label: 'Sẵn sàng thu hoạch', color: 'bg-amber-50 text-amber-700 border-amber-200' },
+  DA_THU_HOACH: { label: 'Đã thu hoạch', color: 'bg-blue-50 text-blue-700 border-blue-200' },
+  NGHI_DAT: { label: 'Nghỉ đất / Cải tạo', color: 'bg-purple-50 text-purple-700 border-purple-200' },
+};
+
+const TASK_STATUS_MAP = {
+  CHO_GIAO: { label: 'Chờ giao', color: 'bg-slate-100 text-slate-600' },
+  DA_GIAO: { label: 'Đã giao', color: 'bg-blue-50 text-blue-600 border border-blue-200' },
+  DANG_THUC_HIEN: { label: 'Đang thực hiện', color: 'bg-amber-50 text-amber-600 border border-amber-200' },
+  HOAN_THANH: { label: 'Hoàn thành', color: 'bg-emerald-50 text-emerald-600 border border-emerald-200' },
+  DA_HUY: { label: 'Đã hủy', color: 'bg-rose-50 text-rose-600 border border-rose-200' },
+};
+
+const TASK_TYPE_LABELS = {
+  TUOI_NUOC: 'Tưới nước',
+  BON_PHAN: 'Bón phân',
+  TIEM_PHONG: 'Tiêm phòng',
+  KHAC: 'Công việc khác'
+};
+
 export default function App() {
-  const [currentUser, setCurrentUser] = useState(null);
-  const [users] = useState(SEED_USERS);
+  const [currentUser, setCurrentUser] = useState(SEED_USERS[0]);
+  const [activeTab, setActiveTab] = useState('dashboard');
+
   const [plots, setPlots] = useState(SEED_PLOTS);
-  const [inventory, setInventory] = useState(SEED_INVENTORY);
   const [tasks, setTasks] = useState(SEED_TASKS);
-  const [harvests, setHarvests] = useState([]);
+  const [materials, setMaterials] = useState(SEED_MATERIALS);
+  const [inventory, setInventory] = useState(SEED_INVENTORY);
+  const [harvestLogs, setHarvestLogs] = useState(SEED_HARVEST_LOGS);
+  const [readings, setReadings] = useState(SEED_SENSOR_READINGS);
   const [notifications, setNotifications] = useState(SEED_NOTIFICATIONS);
-  const [toasts, setToasts] = useState([]);
+  const [irrigationActive, setIrrigationActive] = useState(false);
 
-  // Hàm hiển thị thông báo góc màn hình (Toast)
-  const addToast = (message, type = 'info') => {
-    const id = Date.now();
-    setToasts(prev => [...prev, { id, message, type }]);
-    setTimeout(() => {
-      setToasts(prev => prev.filter(t => t.id !== id));
-    }, 3000);
-  };
+  // Form Task
+  const [newTask, setNewTask] = useState({
+    plot_id: 'P001',
+    worker_id: 'U002',
+    task_type: 'BON_PHAN',
+    due_date: '2026-11-12',
+    note: '',
+    material_id: 'M001',
+    material_qty: 1
+  });
+  const [overloadWarning, setOverloadWarning] = useState('');
 
-  const addNotification = (title, message) => {
-    setNotifications(prev => [{
-      id: `N${Date.now()}`, title, message, date: new Date().toISOString(), isRead: false
-    }, ...prev]);
-  };
+  // Form Harvest
+  const [newHarvest, setNewHarvest] = useState({
+    plot_id: 'P001',
+    quantity_kg: '',
+    quality_grade: 'Loại 1',
+    note: ''
+  });
+  const [harvestAlert, setHarvestAlert] = useState(null);
 
-  const handleLogin = (userId) => {
-    const user = users.find(u => u.id === userId);
-    setCurrentUser(user);
-    addToast(`Đăng nhập thành công: ${user.name}`, 'success');
-  };
+  // IoT Simulation
+  const [simSensor, setSimSensor] = useState({
+    temperature: 34.5,
+    humidity: 55,
+    soil_moisture: 24.0,
+    light_level: 28000
+  });
 
-  const handleLogout = () => {
-    setCurrentUser(null);
-  };
-
-  if (!currentUser) {
-    return <LoginScreen users={users} onLogin={handleLogin} />;
-  }
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col md:flex-row font-sans text-gray-800 relative">
-      {currentUser.role === 'MANAGER' ? (
-        <ManagerDashboard
-          user={currentUser} users={users} plots={plots} inventory={inventory}
-          tasks={tasks} notifications={notifications}
-          setPlots={setPlots} setInventory={setInventory} setTasks={setTasks}
-          addNotification={addNotification} addToast={addToast} onLogout={handleLogout}
-        />
-      ) : (
-        <WorkerDashboard
-          user={currentUser} plots={plots} tasks={tasks}
-          setTasks={setTasks} setInventory={setInventory} setHarvests={setHarvests}
-          addNotification={addNotification} addToast={addToast} onLogout={handleLogout}
-        />
-      )}
-
-      {/* Toast Container */}
-      <div className="fixed bottom-4 right-4 z-50 flex flex-col gap-2">
-        {toasts.map(t => (
-          <div key={t.id} className={`px-4 py-3 rounded shadow-lg text-white font-medium flex items-center gap-2 animate-bounce-short
-            ${t.type === 'error' ? 'bg-red-500' : t.type === 'success' ? 'bg-green-500' : t.type === 'warning' ? 'bg-yellow-500 text-yellow-900' : 'bg-blue-500'}`}>
-            {t.type === 'warning' ? <AlertTriangle size={18} /> : <CheckCircle size={18} />}
-            {t.message}
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// 3. LOGIN SCREEN
-// ==========================================
-function LoginScreen({ users, onLogin }) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-green-50 px-4">
-      <div className="bg-white p-8 rounded-2xl shadow-xl w-full max-w-md border-t-4 border-green-600">
-        <div className="flex flex-col items-center mb-8">
-          <div className="bg-green-100 p-4 rounded-full mb-3 text-green-600">
-            <Sprout size={48} strokeWidth={1.5} />
-          </div>
-          <h1 className="text-2xl font-bold text-gray-800">Farm Management System</h1>
-          <p className="text-gray-500 text-sm mt-1">Đăng nhập để vào hệ thống</p>
-        </div>
-        <div className="space-y-3">
-          {users.map(user => (
-            <button
-              key={user.id}
-              onClick={() => onLogin(user.id)}
-              className={`w-full flex items-center justify-between p-4 rounded-xl border transition-all hover:shadow-md
-                ${user.role === 'MANAGER' ? 'border-blue-200 hover:border-blue-500 bg-blue-50' : 'border-green-200 hover:border-green-500 bg-green-50'}`}
-            >
-              <div className="flex items-center gap-3">
-                {user.role === 'MANAGER' ? <Users className="text-blue-600" /> : <User className="text-green-600" />}
-                <div className="text-left">
-                  <p className="font-semibold text-gray-800">{user.name}</p>
-                  <p className="text-xs text-gray-500">{user.role === 'MANAGER' ? 'Quản lý nông trại' : 'Nhân viên nông trại'}</p>
-                </div>
-              </div>
-              <span className="text-sm font-medium opacity-50">{user.id}</span>
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// 4. MANAGER DASHBOARD (ROLE: MANAGER)
-// ==========================================
-function ManagerDashboard({ user, users, plots, inventory, tasks, notifications, setPlots, setInventory, setTasks, addNotification, addToast, onLogout }) {
-  const [activeTab, setActiveTab] = useState('overview');
-
-  const navItems = [
-    { id: 'overview', icon: Activity, label: 'Tổng quan' },
-    { id: 'plots', icon: Map, label: 'Lô đất' },
-    { id: 'tasks', icon: ClipboardList, label: 'Phân công' },
-    { id: 'inventory', icon: Package, label: 'Kho vật tư' },
-    { id: 'iot', icon: Cpu, label: 'IoT & Tưới' },
-  ];
-
-  return (
-    <>
-      {/* Sidebar */}
-      <div className="w-full md:w-64 bg-green-800 text-white flex flex-col md:min-h-screen">
-        <div className="p-5 flex items-center gap-3 border-b border-green-700">
-          <Sprout size={32} />
-          <h2 className="text-xl font-bold hidden md:block">Farm Manager</h2>
-        </div>
-        <nav className="flex-1 p-3 flex md:flex-col overflow-x-auto gap-1">
-          {navItems.map(item => (
-            <button
-              key={item.id}
-              onClick={() => setActiveTab(item.id)}
-              className={`flex items-center gap-3 px-4 py-3 rounded-lg whitespace-nowrap transition-colors
-                ${activeTab === item.id ? 'bg-green-700 font-semibold' : 'hover:bg-green-700/50'}`}
-            >
-              <item.icon size={20} />
-              <span>{item.label}</span>
-            </button>
-          ))}
-        </nav>
-        <div className="p-4 border-t border-green-700 mt-auto hidden md:block">
-          <p className="text-sm mb-2 opacity-80">Xin chào, {user.name}</p>
-          <button onClick={onLogout} className="flex items-center gap-2 text-red-300 hover:text-red-100 transition-colors">
-            <LogOut size={18} /> Đăng xuất
-          </button>
-        </div>
-      </div>
-
-      {/* Main Content */}
-      <div className="flex-1 p-4 md:p-8 overflow-y-auto h-screen bg-gray-50">
-        <div className="flex justify-between items-center md:hidden mb-4">
-          <h2 className="text-xl font-bold text-gray-800">Quản lý Nông trại</h2>
-          <button onClick={onLogout} className="p-2 text-red-500 rounded bg-red-50"><LogOut size={20} /></button>
-        </div>
-
-        {activeTab === 'overview' && (
-          <ManagerOverview plots={plots} inventory={inventory} notifications={notifications} />
-        )}
-        {activeTab === 'plots' && (
-          <PlotManager plots={plots} setPlots={setPlots} addToast={addToast} />
-        )}
-        {activeTab === 'tasks' && (
-          <TaskManager users={users} plots={plots} tasks={tasks} setTasks={setTasks} addToast={addToast} />
-        )}
-        {activeTab === 'inventory' && (
-          <InventoryManager inventory={inventory} />
-        )}
-        {activeTab === 'iot' && (
-          <IoTSimulator addToast={addToast} addNotification={addNotification} />
-        )}
-      </div>
-    </>
-  );
-}
-
-// 4.1 Manager Overview
-function ManagerOverview({ plots, inventory, notifications }) {
-  const unreadNotifs = notifications.filter(n => !n.isRead);
-
-  return (
-    <div className="space-y-6">
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Tổng quan Nông trại</h2>
-
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 border-l-4 border-l-blue-500">
-          <div className="p-3 bg-blue-50 text-blue-600 rounded-full"><Map size={24} /></div>
-          <div>
-            <p className="text-sm text-gray-500 font-medium">Tổng Lô đất</p>
-            <p className="text-2xl font-bold">{plots.length}</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 border-l-4 border-l-green-500">
-          <div className="p-3 bg-green-50 text-green-600 rounded-full"><Package size={24} /></div>
-          <div>
-            <p className="text-sm text-gray-500 font-medium">Vật tư / Nông sản</p>
-            <p className="text-2xl font-bold">{inventory.length} loại</p>
-          </div>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex items-center gap-4 border-l-4 border-l-red-500">
-          <div className="p-3 bg-red-50 text-red-600 rounded-full"><Bell size={24} /></div>
-          <div>
-            <p className="text-sm text-gray-500 font-medium">Cảnh báo mới</p>
-            <p className="text-2xl font-bold text-red-600">{unreadNotifs.length}</p>
-          </div>
-        </div>
-      </div>
-
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="px-6 py-4 border-b border-gray-100 bg-gray-50 flex justify-between items-center">
-          <h3 className="font-bold flex items-center gap-2 text-gray-700">
-            <Bell size={18} className="text-yellow-500" /> Thông báo & Cảnh báo
-          </h3>
-        </div>
-        <div className="divide-y divide-gray-100 max-h-96 overflow-y-auto">
-          {notifications.length === 0 ? (
-            <p className="p-6 text-center text-gray-400">Không có thông báo nào</p>
-          ) : (
-            notifications.map(n => (
-              <div key={n.id} className={`p-4 flex gap-4 ${n.isRead ? 'bg-white opacity-60' : 'bg-red-50/30'}`}>
-                <div className="mt-1">
-                  {n.title.includes('Cảnh báo') || n.title.includes('khô') ?
-                    <AlertTriangle size={20} className="text-red-500" /> :
-                    <Bell size={20} className="text-blue-400" />
-                  }
-                </div>
-                <div>
-                  <h4 className={`text-sm font-semibold ${!n.isRead ? 'text-gray-900' : 'text-gray-600'}`}>{n.title}</h4>
-                  <p className="text-sm text-gray-600 mt-1">{n.message}</p>
-                  <p className="text-xs text-gray-400 mt-2">{new Date(n.date).toLocaleString('vi-VN')}</p>
-                </div>
-              </div>
-            ))
-          )}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 4.2 Plot Manager
-function PlotManager({ plots, setPlots, addToast }) {
-  const [showForm, setShowForm] = useState(false);
-  const [formData, setFormData] = useState({ name: '', area: '', expectedYield: '', type: 'DAT_TRONG' });
-
-  const handleAddPlot = (e) => {
-    e.preventDefault();
-    if (!formData.name || !formData.area || !formData.expectedYield) {
-      addToast('Vui lòng điền đủ thông tin', 'error');
-      return;
-    }
-    const newPlot = {
-      id: `P00${plots.length + 1}`,
-      name: formData.name,
-      area: parseFloat(formData.area),
-      expectedYield: parseFloat(formData.expectedYield),
-      type: formData.type
+  const pushNotification = (userId, title, content) => {
+    const notif = {
+      notification_id: 'N' + Date.now(),
+      user_id: userId,
+      title,
+      content,
+      is_read: false,
+      created_at: new Date().toLocaleTimeString('vi-VN') + ' ' + new Date().toLocaleDateString('vi-VN')
     };
-    setPlots([...plots, newPlot]);
-    setShowForm(false);
-    setFormData({ name: '', area: '', expectedYield: '', type: 'DAT_TRONG' });
-    addToast('Đã thêm lô đất mới', 'success');
+    setNotifications(prev => [notif, ...prev]);
   };
 
-  return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800">Quản lý Lô đất & Khu vực</h2>
-        <button onClick={() => setShowForm(!showForm)} className="bg-green-600 text-white px-4 py-2 rounded-lg flex items-center gap-2 hover:bg-green-700 transition">
-          <Plus size={18} /> Thêm Mới
-        </button>
-      </div>
+  const handleNextPlotStatus = (plotId) => {
+    const order = ['TRONG', 'SINH_TRUONG', 'SAN_SANG_THU_HOACH', 'DA_THU_HOACH', 'NGHI_DAT'];
+    setPlots(prev => prev.map(p => {
+      if (p.plot_id !== plotId) return p;
+      const nextIdx = (order.indexOf(p.status) + 1) % order.length;
+      return { ...p, status: order[nextIdx] };
+    }));
+  };
 
-      {showForm && (
-        <form onSubmit={handleAddPlot} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 mb-6 flex flex-col gap-4 animate-in fade-in slide-in-from-top-4">
-          <h3 className="font-bold border-b pb-2">Thêm Lô đất / Khu vực mới</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <input placeholder="Tên lô đất (VD: Lô B1 - Ngô)" className="p-2 border rounded" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} />
-            <select className="p-2 border rounded" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
-              <option value="DAT_TRONG">Đất trồng trọt</option>
-              <option value="KHU_CHAN_NUOI">Khu chăn nuôi</option>
-            </select>
-            <input type="number" placeholder="Diện tích (m2)" className="p-2 border rounded" value={formData.area} onChange={e => setFormData({ ...formData, area: e.target.value })} />
-            <input type="number" placeholder="Sản lượng dự kiến (kg)" className="p-2 border rounded" value={formData.expectedYield} onChange={e => setFormData({ ...formData, expectedYield: e.target.value })} />
-          </div>
-          <div className="flex justify-end gap-2 mt-2">
-            <button type="button" onClick={() => setShowForm(false)} className="px-4 py-2 text-gray-500 hover:bg-gray-100 rounded">Hủy</button>
-            <button type="submit" className="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700">Lưu thông tin</button>
-          </div>
-        </form>
-      )}
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {plots.map(plot => (
-          <div key={plot.id} className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 hover:shadow-md transition">
-            <div className="flex justify-between items-start mb-3">
-              <h3 className="font-bold text-lg text-gray-800">{plot.name}</h3>
-              <span className={`text-xs px-2 py-1 rounded-full font-medium ${plot.type === 'DAT_TRONG' ? 'bg-green-100 text-green-700' : 'bg-orange-100 text-orange-700'}`}>
-                {plot.type === 'DAT_TRONG' ? 'Trồng trọt' : 'Chăn nuôi'}
-              </span>
-            </div>
-            <div className="text-sm text-gray-600 space-y-2">
-              <p>Mã Lô: <span className="font-medium">{plot.id}</span></p>
-              <p>Diện tích: <span className="font-medium">{plot.area} m²</span></p>
-              <p>Dự kiến thu: <span className="font-medium text-blue-600">{plot.expectedYield} kg</span></p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
-// 4.3 Task Manager (Phân công)
-function TaskManager({ users, plots, tasks, setTasks, addToast }) {
-  const workers = users.filter(u => u.role === 'WORKER');
-  const [formData, setFormData] = useState({ plotId: '', workerId: '', type: 'Tưới nước' });
-
-  // CORE LOGIC: Kiểm tra tải công việc nhân viên
   const handleAssignTask = (e) => {
     e.preventDefault();
-    if (!formData.plotId || !formData.workerId) {
-      addToast('Vui lòng chọn đủ lô đất và nhân viên', 'error');
-      return;
-    }
+    setOverloadWarning('');
 
-    const selectedWorker = workers.find(w => w.id === formData.workerId);
+    const worker = SEED_USERS.find(u => u.user_id === newTask.worker_id);
+    const activeTasksCount = tasks.filter(
+      t => t.worker_id === newTask.worker_id && t.due_date === newTask.due_date && t.status !== 'DA_HUY'
+    ).length;
 
-    // Đếm số công việc CHƯA hoàn thành của nhân viên này
-    const activeTaskCount = tasks.filter(t => t.workerId === formData.workerId && t.status !== 'HOAN_THANH').length;
-
-    if (activeTaskCount >= selectedWorker.maxTasks) {
-      // Logic nghiệp vụ chặn phân công và báo lỗi
-      addToast(`LỖI: Nhân viên ${selectedWorker.name} đã vượt tải (${activeTaskCount}/${selectedWorker.maxTasks} công việc). Vui lòng chọn nhân viên khác!`, 'error');
-      return;
-    }
-
-    const newTask = {
-      id: `T00${tasks.length + 1}`,
-      plotId: formData.plotId,
-      workerId: formData.workerId,
-      type: formData.type,
-      status: 'CHO_GIAO',
-      date: new Date().toISOString()
-    };
-
-    setTasks([newTask, ...tasks]);
-    addToast(`Đã giao việc "${formData.type}" cho ${selectedWorker.name}`, 'success');
-  };
-
-  return (
-    <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-      <div className="lg:col-span-1">
-        <form onSubmit={handleAssignTask} className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 sticky top-4">
-          <h3 className="font-bold text-lg border-b pb-3 mb-4">Giao việc mới</h3>
-
-          <div className="space-y-4">
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Lô đất / Khu vực</label>
-              <select required className="w-full p-2 border rounded" value={formData.plotId} onChange={e => setFormData({ ...formData, plotId: e.target.value })}>
-                <option value="">-- Chọn lô đất --</option>
-                {plots.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Nhân viên phụ trách</label>
-              <select required className="w-full p-2 border rounded" value={formData.workerId} onChange={e => setFormData({ ...formData, workerId: e.target.value })}>
-                <option value="">-- Chọn nhân viên --</option>
-                {workers.map(w => (
-                  <option key={w.id} value={w.id}>
-                    {w.name} (Tải max: {w.maxTasks})
-                  </option>
-                ))}
-              </select>
-            </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-1">Loại công việc</label>
-              <select className="w-full p-2 border rounded" value={formData.type} onChange={e => setFormData({ ...formData, type: e.target.value })}>
-                <option value="Tưới nước">Tưới nước</option>
-                <option value="Bón phân">Bón phân</option>
-                <option value="Tiêm phòng">Tiêm phòng</option>
-                <option value="Thu hoạch">Thu hoạch</option>
-                <option value="Khác">Khác</option>
-              </select>
-            </div>
-
-            <button type="submit" className="w-full bg-blue-600 text-white py-2.5 rounded-lg hover:bg-blue-700 font-medium mt-2">
-              Xác nhận phân công
-            </button>
-          </div>
-        </form>
-      </div>
-
-      <div className="lg:col-span-2 bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <div className="p-4 border-b bg-gray-50"><h3 className="font-bold text-lg">Danh sách công việc đã giao</h3></div>
-        <div className="p-0 overflow-x-auto">
-          <table className="w-full text-left text-sm whitespace-nowrap">
-            <thead className="bg-gray-50 border-b text-gray-600">
-              <tr>
-                <th className="p-4 font-medium">Mã CV</th>
-                <th className="p-4 font-medium">Công việc</th>
-                <th className="p-4 font-medium">Lô / Khu vực</th>
-                <th className="p-4 font-medium">Nhân viên</th>
-                <th className="p-4 font-medium">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-gray-100">
-              {tasks.map(task => {
-                const plot = plots.find(p => p.id === task.plotId);
-                const worker = workers.find(w => w.id === task.workerId);
-                return (
-                  <tr key={task.id} className="hover:bg-gray-50">
-                    <td className="p-4 text-gray-500">{task.id}</td>
-                    <td className="p-4 font-medium">{task.type}</td>
-                    <td className="p-4">{plot?.name || task.plotId}</td>
-                    <td className="p-4">{worker?.name || task.workerId}</td>
-                    <td className="p-4">
-                      <span className={`px-2 py-1 rounded text-xs font-medium
-                        ${task.status === 'CHO_GIAO' ? 'bg-gray-100 text-gray-600' :
-                          task.status === 'DANG_THUC_HIEN' ? 'bg-blue-100 text-blue-700' :
-                            'bg-green-100 text-green-700'}`}>
-                        {task.status === 'CHO_GIAO' ? 'Chờ nhận' : task.status === 'DANG_THUC_HIEN' ? 'Đang làm' : 'Hoàn thành'}
-                      </span>
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// 4.4 Inventory Manager
-function InventoryManager({ inventory }) {
-  return (
-    <div>
-      <h2 className="text-2xl font-bold text-gray-800 mb-6">Quản lý Kho & Vật tư</h2>
-      <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-        <table className="w-full text-left text-sm">
-          <thead className="bg-gray-50 border-b text-gray-600">
-            <tr>
-              <th className="p-4 font-medium">Mã SP</th>
-              <th className="p-4 font-medium">Tên Vật tư / Nông sản</th>
-              <th className="p-4 font-medium">Phân loại</th>
-              <th className="p-4 font-medium text-right">Số lượng tồn kho</th>
-            </tr>
-          </thead>
-          <tbody className="divide-y divide-gray-100">
-            {inventory.map(item => (
-              <tr key={item.id} className="hover:bg-gray-50">
-                <td className="p-4 text-gray-500 font-mono text-xs">{item.id}</td>
-                <td className="p-4 font-medium text-gray-800">{item.name}</td>
-                <td className="p-4">
-                  <span className={`px-2 py-1 rounded text-xs font-medium ${item.type === 'MATERIAL' ? 'bg-purple-100 text-purple-700' : 'bg-green-100 text-green-700'}`}>
-                    {item.type === 'MATERIAL' ? 'Vật tư (Phân/Thuốc)' : 'Nông sản thu hoạch'}
-                  </span>
-                </td>
-                <td className="p-4 text-right font-bold text-lg text-green-600">
-                  {item.quantity} <span className="text-sm text-gray-500 font-normal">{item.unit}</span>
-                </td>
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-    </div>
-  );
-}
-
-// 4.5 IoT Simulator
-function IoTSimulator({ addToast, addNotification }) {
-  const [sensorData, setSensorData] = useState({ temp: 28, moisture: 65, light: 12000 });
-  const [isIrrigating, setIsIrrigating] = useState(false);
-
-  // CORE LOGIC: Thu thập dữ liệu IoT và Tự động tưới
-  const simulateData = () => {
-    // Random độ ẩm đất từ 20% đến 60%
-    const newMoisture = Math.floor(Math.random() * (60 - 20 + 1) + 20);
-    const newTemp = (Math.random() * (35 - 25) + 25).toFixed(1);
-
-    setSensorData(prev => ({ ...prev, moisture: newMoisture, temp: newTemp }));
-
-    // Nếu độ ẩm < 40%, kích hoạt tưới và cảnh báo
-    if (newMoisture < 40) {
-      setIsIrrigating(true);
-      addToast(`Cảnh báo: Đất khô (${newMoisture}%). Đã kích hoạt hệ thống tưới tự động!`, 'warning');
-      addNotification(
-        'Hệ thống tưới tự động kích hoạt',
-        `Đã tự động bật máy tưới tại Lô P001 do độ ẩm đất giảm xuống mức nguy hiểm (${newMoisture}%).`
+    if (activeTasksCount >= worker.max_tasks_per_day) {
+      setOverloadWarning(
+        `Cảnh báo vượt tải (Luồng 3a): Nhân viên ${worker.full_name} đã có ${activeTasksCount}/${worker.max_tasks_per_day} việc trong ngày ${newTask.due_date}.`
       );
-
-      // Giả lập tắt tưới sau 5s
-      setTimeout(() => {
-        setIsIrrigating(false);
-        setSensorData(prev => ({ ...prev, moisture: 65 })); // Đất ẩm lại
-        addToast(`Tưới hoàn tất. Độ ẩm đất đã phục hồi (65%)`, 'success');
-      }, 5000);
-    } else {
-      setIsIrrigating(false);
-      addToast(`Dữ liệu môi trường ổn định. Độ ẩm: ${newMoisture}%`, 'success');
-    }
-  };
-
-  return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      <div className="flex justify-between items-center mb-4">
-        <h2 className="text-2xl font-bold text-gray-800">Cảm biến IoT (P001)</h2>
-        <button
-          onClick={simulateData}
-          disabled={isIrrigating}
-          className="bg-purple-600 text-white px-4 py-2 rounded-lg font-medium hover:bg-purple-700 transition disabled:opacity-50 flex items-center gap-2"
-        >
-          <Activity size={18} /> Simulate IoT Data
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center h-40">
-          <Droplets size={32} className={sensorData.moisture < 40 ? 'text-red-500 animate-pulse' : 'text-blue-500'} />
-          <h3 className="text-gray-500 font-medium mt-2">Độ ẩm đất</h3>
-          <p className={`text-4xl font-bold mt-1 ${sensorData.moisture < 40 ? 'text-red-500' : 'text-gray-800'}`}>
-            {sensorData.moisture}%
-          </p>
-        </div>
-        <div className="bg-white p-6 rounded-xl shadow-sm border border-gray-100 flex flex-col items-center justify-center text-center h-40 relative overflow-hidden">
-          {isIrrigating && (
-            <div className="absolute inset-0 bg-blue-500/10 flex items-center justify-center">
-              <span className="text-blue-600 font-bold animate-pulse">ĐANG TƯỚI NƯỚC...</span>
-            </div>
-          )}
-          <Cpu size={32} className="text-gray-400" />
-          <h3 className="text-gray-500 font-medium mt-2">Trạng thái Bơm</h3>
-          <p className={`text-xl font-bold mt-1 ${isIrrigating ? 'text-blue-600' : 'text-green-600'}`}>
-            {isIrrigating ? 'HOẠT ĐỘNG' : 'CHỜ (STANDBY)'}
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ==========================================
-// 5. WORKER DASHBOARD (ROLE: WORKER)
-// ==========================================
-function WorkerDashboard({ user, plots, tasks, setTasks, setInventory, setHarvests, addNotification, addToast, onLogout }) {
-  const [activeTab, setActiveTab] = useState('tasks');
-
-  return (
-    <div className="flex-1 flex flex-col min-h-screen bg-gray-50 pb-16 md:pb-0">
-      {/* Header Mobile */}
-      <div className="bg-green-600 text-white p-4 flex justify-between items-center shadow-md z-10 relative">
-        <div className="flex items-center gap-2">
-          <User size={24} />
-          <div>
-            <h1 className="font-bold leading-tight">{user.name}</h1>
-            <p className="text-xs text-green-200">Nhân viên nông trại</p>
-          </div>
-        </div>
-        <button onClick={onLogout} className="p-2 bg-green-700 rounded-full hover:bg-green-800 transition"><LogOut size={16} /></button>
-      </div>
-
-      {/* Main Content Area */}
-      <div className="flex-1 overflow-y-auto p-4 max-w-3xl mx-auto w-full">
-        {activeTab === 'tasks' ? (
-          <WorkerTasks user={user} tasks={tasks} setTasks={setTasks} plots={plots} addToast={addToast} />
-        ) : (
-          <WorkerHarvest user={user} plots={plots} setHarvests={setHarvests} setInventory={setInventory} addNotification={addNotification} addToast={addToast} />
-        )}
-      </div>
-
-      {/* Bottom Navigation (Mobile optimized) */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 flex justify-around p-2 md:relative md:max-w-3xl md:mx-auto md:w-full md:border md:rounded-t-2xl md:shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] z-20">
-        <button
-          onClick={() => setActiveTab('tasks')}
-          className={`flex flex-col items-center p-2 px-6 rounded-xl transition ${activeTab === 'tasks' ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <ClipboardList size={24} />
-          <span className="text-xs font-medium mt-1">Việc của tôi</span>
-        </button>
-        <button
-          onClick={() => setActiveTab('harvest')}
-          className={`flex flex-col items-center p-2 px-6 rounded-xl transition ${activeTab === 'harvest' ? 'text-green-600 bg-green-50' : 'text-gray-400 hover:text-gray-600'}`}
-        >
-          <Sprout size={24} />
-          <span className="text-xs font-medium mt-1">Ghi thu hoạch</span>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// 5.1 Worker Tasks
-function WorkerTasks({ user, tasks, setTasks, plots, addToast }) {
-  const myTasks = tasks.filter(t => t.workerId === user.id);
-
-  const updateStatus = (taskId, newStatus) => {
-    setTasks(tasks.map(t => t.id === taskId ? { ...t, status: newStatus } : t));
-    addToast(`Đã cập nhật trạng thái công việc`, 'success');
-  };
-
-  return (
-    <div className="space-y-4 animate-in fade-in">
-      <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-        <ClipboardList className="text-green-600" /> Danh sách việc hôm nay
-      </h2>
-
-      {myTasks.length === 0 ? (
-        <div className="text-center py-10 bg-white rounded-xl border border-gray-200 border-dashed">
-          <p className="text-gray-500">Bạn chưa có công việc nào được giao.</p>
-        </div>
-      ) : (
-        myTasks.map(task => {
-          const plot = plots.find(p => p.id === task.plotId);
-          return (
-            <div key={task.id} className="bg-white p-4 rounded-xl shadow-sm border border-gray-100 flex flex-col gap-3 relative overflow-hidden">
-              {/* Status indicator line */}
-              <div className={`absolute left-0 top-0 bottom-0 w-1 
-                ${task.status === 'CHO_GIAO' ? 'bg-gray-300' : task.status === 'DANG_THUC_HIEN' ? 'bg-blue-500' : 'bg-green-500'}`}></div>
-
-              <div className="flex justify-between items-start pl-2">
-                <div>
-                  <h3 className="font-bold text-lg text-gray-800">{task.type}</h3>
-                  <p className="text-sm text-gray-500 flex items-center gap-1 mt-1">
-                    <Map size={14} /> {plot?.name}
-                  </p>
-                </div>
-                <span className={`text-xs px-2 py-1 rounded font-medium border
-                  ${task.status === 'CHO_GIAO' ? 'bg-gray-50 text-gray-600 border-gray-200' :
-                    task.status === 'DANG_THUC_HIEN' ? 'bg-blue-50 text-blue-700 border-blue-200' :
-                      'bg-green-50 text-green-700 border-green-200'}`}>
-                  {task.status === 'CHO_GIAO' ? 'Chờ nhận' : task.status === 'DANG_THUC_HIEN' ? 'Đang làm' : 'Hoàn thành'}
-                </span>
-              </div>
-
-              <div className="pl-2 pt-2 border-t border-gray-50 flex gap-2">
-                {task.status === 'CHO_GIAO' && (
-                  <button onClick={() => updateStatus(task.id, 'DANG_THUC_HIEN')} className="flex-1 bg-blue-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-blue-700">
-                    Bắt đầu làm
-                  </button>
-                )}
-                {task.status === 'DANG_THUC_HIEN' && (
-                  <button onClick={() => updateStatus(task.id, 'HOAN_THANH')} className="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-green-700 flex justify-center items-center gap-1">
-                    <CheckCircle size={16} /> Đánh dấu Hoàn thành
-                  </button>
-                )}
-                {task.status === 'HOAN_THANH' && (
-                  <p className="text-sm text-green-600 italic font-medium w-full text-center py-1">Công việc đã kết thúc tốt đẹp!</p>
-                )}
-              </div>
-            </div>
-          );
-        })
-      )}
-    </div>
-  );
-}
-
-// 5.2 Worker Harvest (Ghi nhận thu hoạch & Core Logic)
-function WorkerHarvest({ user, plots, setHarvests, setInventory, addNotification, addToast }) {
-  const [formData, setFormData] = useState({ plotId: '', quantity: '', grade: 'Loại 1' });
-
-  // CORE LOGIC: Ghi nhận thu hoạch -> Cập nhật kho -> Cảnh báo chênh lệch
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    if (!formData.plotId || !formData.quantity) {
-      addToast('Vui lòng nhập đủ thông tin', 'error');
       return;
     }
 
-    const qty = parseFloat(formData.quantity);
-    if (qty <= 0) {
-      addToast('Sản lượng phải > 0', 'error');
-      return;
+    if (newTask.material_id && newTask.material_qty > 0) {
+      setMaterials(prev => prev.map(m =>
+        m.material_id === newTask.material_id
+          ? { ...m, stock_qty: Math.max(0, m.stock_qty - Number(newTask.material_qty)) }
+          : m
+      ));
     }
 
-    const selectedPlot = plots.find(p => p.id === formData.plotId);
-
-    // 1. Lưu nhật ký
-    const newHarvest = {
-      id: `H${Date.now()}`,
-      plotId: formData.plotId,
-      workerId: user.id,
-      quantity: qty,
-      date: new Date().toISOString()
+    const created = {
+      task_id: 'T' + (tasks.length + 1).toString().padStart(3, '0'),
+      plan_name: 'Kế hoạch chăm sóc định kỳ',
+      ...newTask,
+      material_qty: Number(newTask.material_qty),
+      status: 'DA_GIAO'
     };
-    setHarvests(prev => [newHarvest, ...prev]);
 
-    // 2. Logic cập nhật kho (Cộng dồn tự động)
-    // Tách tên sản phẩm từ tên lô (VD: "Lô đất A1 - Trồng Cà chua" -> "Cà chua")
-    // Giả định đơn giản cho demo: Lấy phần sau dấu '-' hoặc dùng tên lô
-    const productNameMatch = selectedPlot.name.split('-');
-    const baseProductName = productNameMatch.length > 1 ? productNameMatch[1].trim().replace('Trồng ', '') : selectedPlot.name;
-    const inventoryName = `${baseProductName} ${formData.grade.toLowerCase()}`;
+    setTasks([created, ...tasks]);
+    pushNotification(worker.user_id, 'Phân công công việc mới', `Bạn được giao việc "${TASK_TYPE_LABELS[created.task_type]}" hạn ngày ${created.due_date}.`);
+    setNewTask({ ...newTask, note: '' });
+  };
+
+  const handleUpdateTaskStatus = (taskId, nextStatus) => {
+    setTasks(prev => prev.map(t => t.task_id === taskId ? { ...t, status: nextStatus } : t));
+  };
+
+  const handleSaveHarvest = (e) => {
+    e.preventDefault();
+    setHarvestAlert(null);
+    const qty = Number(newHarvest.quantity_kg);
+    if (qty <= 0) return;
+
+    const plot = plots.find(p => p.plot_id === newHarvest.plot_id);
+    const productName = plot.crop.crop_name;
+
+    const log = {
+      harvest_id: 'H' + (harvestLogs.length + 1).toString().padStart(3, '0'),
+      plot_id: newHarvest.plot_id,
+      recorded_by: currentUser.user_id,
+      harvest_date: new Date().toLocaleTimeString('vi-VN') + ' ' + new Date().toLocaleDateString('vi-VN'),
+      quantity_kg: qty,
+      quality_grade: newHarvest.quality_grade,
+      note: newHarvest.note || 'Thu hoạch định kỳ'
+    };
+    setHarvestLogs([log, ...harvestLogs]);
 
     setInventory(prev => {
-      const existing = prev.find(i => i.name.toLowerCase() === inventoryName.toLowerCase());
-      if (existing) {
-        return prev.map(i => i.id === existing.id ? { ...i, quantity: i.quantity + qty } : i);
-      } else {
-        return [...prev, { id: `INV${Date.now()}`, name: inventoryName, quantity: qty, unit: 'kg', type: 'PRODUCT' }];
+      const existingIdx = prev.findIndex(
+        item => item.product_name === productName && item.quality_grade === newHarvest.quality_grade
+      );
+      if (existingIdx > -1) {
+        const updated = [...prev];
+        updated[existingIdx] = {
+          ...updated[existingIdx],
+          quantity_kg: updated[existingIdx].quantity_kg + qty,
+          last_updated: log.harvest_date
+        };
+        return updated;
       }
+      return [
+        { item_id: 'INV' + Date.now(), product_name: productName, quality_grade: newHarvest.quality_grade, quantity_kg: qty, last_updated: log.harvest_date },
+        ...prev
+      ];
     });
 
-    // 3. Logic cảnh báo bất thường (Chênh lệch > 30% so với dự kiến)
-    const expected = selectedPlot.expectedYield;
-    const diffRatio = Math.abs(qty - expected) / expected;
-
+    const diffRatio = Math.abs(qty - plot.expected_yield_kg) / plot.expected_yield_kg;
     if (diffRatio > 0.3) {
-      const direction = qty > expected ? 'cao hơn' : 'thấp hơn';
-      const percent = (diffRatio * 100).toFixed(0);
-      addNotification(
-        'CẢNH BÁO BẤT THƯỜNG SẢN LƯỢNG',
-        `Lô ${selectedPlot.name} vừa thu hoạch ${qty}kg. Mức này ${direction} ${percent}% so với dự kiến ban đầu (${expected}kg). Người ghi: ${user.name}`
-      );
-      // Vẫn toast thành công cho nhân viên biết đã lưu
-      addToast(`Đã lưu ${qty}kg. Lưu ý: Sản lượng lệch >30% dự kiến!`, 'warning');
+      const percent = (diffRatio * 100).toFixed(1);
+      const msg = `CẢNH BÁO BẤT THƯỜNG (UC05b): Sản lượng thực tế (${qty} kg) chênh lệch ${percent}% (>30%) so với dự kiến (${plot.expected_yield_kg} kg)!`;
+      setHarvestAlert(msg);
+      pushNotification('U001', 'Cảnh báo chênh lệch sản lượng >30%', msg);
     } else {
-      addToast(`Thu hoạch thành công: ${qty}kg đã được nhập kho.`, 'success');
+      pushNotification('U001', 'Ghi nhận thu hoạch mới', `${currentUser.full_name} đã nhập ${qty}kg ${productName} (${newHarvest.quality_grade}) vào kho.`);
     }
 
-    setFormData({ plotId: '', quantity: '', grade: 'Loại 1' });
+    setNewHarvest({ ...newHarvest, quantity_kg: '', note: '' });
   };
 
+  const handleReceiveIoTData = (e) => {
+    e.preventDefault();
+    const newReading = {
+      reading_id: 'R' + (readings.length + 1).toString().padStart(3, '0'),
+      sensor_id: 'S001',
+      plot_id: 'P001',
+      location: 'Góc Tây Bắc Lô A1',
+      timestamp: new Date().toLocaleTimeString('vi-VN') + ' ' + new Date().toLocaleDateString('vi-VN'),
+      temperature: Number(simSensor.temperature),
+      humidity: Number(simSensor.humidity),
+      soil_moisture: Number(simSensor.soil_moisture),
+      light_level: Number(simSensor.light_level)
+    };
+    setReadings([newReading, ...readings]);
+
+    if (newReading.soil_moisture < 30) {
+      setIrrigationActive(true);
+      pushNotification('U001', 'Tự động kích hoạt tưới IoT (UC08)', `Độ ẩm đất Lô A1 giảm xuống ${newReading.soil_moisture}% (<30%). Hệ thống đã bật van tưới!`);
+    } else {
+      setIrrigationActive(false);
+    }
+  };
+
+  const unreadCount = notifications.filter(n => !n.is_read).length;
+
   return (
-    <div className="animate-in fade-in">
-      <h2 className="text-xl font-bold text-gray-800 mb-4 flex items-center gap-2">
-        <Sprout className="text-green-600" /> Ghi nhận thu hoạch (Nhập Kho)
-      </h2>
-
-      <form onSubmit={handleSubmit} className="bg-white p-5 rounded-2xl shadow-sm border border-gray-100 flex flex-col gap-4">
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Chọn Lô / Chuồng thu hoạch</label>
-          <select required className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl" value={formData.plotId} onChange={e => setFormData({ ...formData, plotId: e.target.value })}>
-            <option value="">-- Bấm để chọn --</option>
-            {plots.map(p => <option key={p.id} value={p.id}>{p.name} (Dự kiến: {p.expectedYield}kg)</option>)}
-          </select>
-        </div>
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-emerald-50/20 to-slate-100 flex flex-col md:flex-row font-sans text-slate-800 antialiased">
+      {/* SIDEBAR HIỆN ĐẠI */}
+      <aside className="w-full md:w-72 bg-slate-900 text-slate-100 flex flex-col justify-between p-5 shadow-2xl relative overflow-hidden">
+        {/* Glow effect background */}
+        <div className="absolute -top-24 -left-24 w-64 h-64 bg-emerald-500/10 rounded-full blur-3xl pointer-events-none"></div>
 
         <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Sản lượng thực tế (kg/tấn)</label>
-          <div className="relative">
-            <input required type="number" step="0.1" placeholder="Nhập số lượng..."
-              className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl text-lg font-bold text-green-700"
-              value={formData.quantity} onChange={e => setFormData({ ...formData, quantity: e.target.value })}
-            />
-            <span className="absolute right-4 top-3 text-gray-400 font-medium">KG</span>
+          {/* Logo Brand */}
+          <div className="flex items-center gap-3.5 pb-6 border-b border-slate-800">
+            <div className="p-2.5 bg-gradient-to-tr from-emerald-600 to-teal-400 rounded-xl shadow-lg shadow-emerald-900/30">
+              <Sprout className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <h1 className="font-bold text-lg tracking-tight text-white flex items-center gap-1.5">
+                FarmOS <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+              </h1>
+              <p className="text-xs text-slate-400 font-medium">Smart Farm Management</p>
+            </div>
           </div>
+
+          {/* Account Selector Card */}
+          <div className="mt-6 bg-slate-800/80 backdrop-blur-md p-3.5 rounded-xl border border-slate-700/60 shadow-inner">
+            <div className="flex items-center justify-between mb-2">
+              <span className="text-[10px] uppercase tracking-wider text-emerald-400 font-bold flex items-center gap-1">
+                <ShieldAlert className="w-3 h-3" /> Tài khoản Demo (RBAC)
+              </span>
+            </div>
+            <select
+              value={currentUser.user_id}
+              onChange={(e) => setCurrentUser(SEED_USERS.find(u => u.user_id === e.target.value))}
+              className="w-full bg-slate-900 text-slate-200 text-xs font-medium rounded-lg px-3 py-2 border border-slate-700 focus:outline-none focus:ring-2 focus:ring-emerald-500 transition cursor-pointer"
+            >
+              {SEED_USERS.map(u => (
+                <option key={u.user_id} value={u.user_id}>
+                  {u.full_name} ({u.role})
+                </option>
+              ))}
+            </select>
+          </div>
+
+          {/* Navigation Menu */}
+          <nav className="mt-6 space-y-1.5">
+            {[
+              { id: 'dashboard', label: 'Tổng quan & Thống kê', icon: BarChart3 },
+              { id: 'plots', label: 'Lô đất & Vòng đời', icon: Map },
+              { id: 'tasks', label: 'Phân công & Nhật ký', icon: ClipboardList },
+              { id: 'harvest', label: 'Thu hoạch & Kho', icon: Package },
+              { id: 'iot', label: 'Cảm biến IoT & Tưới', icon: Cpu },
+            ].map(item => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.id;
+              return (
+                <button
+                  key={item.id}
+                  onClick={() => setActiveTab(item.id)}
+                  className={`w-full flex items-center justify-between px-3.5 py-3 rounded-xl text-xs font-semibold transition-all duration-200 ${
+                    isActive
+                      ? 'bg-gradient-to-r from-emerald-600 to-teal-600 text-white shadow-lg shadow-emerald-600/20 translate-x-1'
+                      : 'text-slate-400 hover:bg-slate-800/60 hover:text-slate-200'
+                  }`}
+                >
+                  <div className="flex items-center gap-3">
+                    <Icon className={`w-4 h-4 ${isActive ? 'text-white' : 'text-slate-400'}`} />
+                    <span>{item.label}</span>
+                  </div>
+                  {isActive && <ChevronRight className="w-3.5 h-3.5 text-white/80" />}
+                </button>
+              );
+            })}
+          </nav>
         </div>
 
-        <div>
-          <label className="block text-sm font-medium text-gray-700 mb-1">Phân loại chất lượng</label>
-          <select className="w-full p-3 bg-gray-50 border border-gray-200 rounded-xl" value={formData.grade} onChange={e => setFormData({ ...formData, grade: e.target.value })}>
-            <option value="Loại 1">Loại 1 (Đạt chuẩn xuất khẩu/siêu thị)</option>
-            <option value="Loại 2">Loại 2 (Thị trường tự do)</option>
-            <option value="Hàng dạt">Hàng dạt/Hư hỏng một phần</option>
-          </select>
+        {/* Footer info */}
+        <div className="pt-4 border-t border-slate-800 text-[11px] text-slate-500">
+          <p className="font-semibold text-slate-400">Nhóm 9 - Đại học GTVT</p>
+          <p className="mt-0.5">Phân tích Thiết kế Hướng đối tượng</p>
         </div>
+      </aside>
 
-        <button type="submit" className="w-full bg-green-600 text-white py-4 rounded-xl text-lg font-bold shadow-md hover:bg-green-700 active:scale-95 transition mt-2">
-          Gửi Báo Cáo & Nhập Kho
-        </button>
+      {/* MAIN CONTAINER */}
+      <main className="flex-1 p-6 md:p-8 overflow-y-auto max-h-screen">
+        {/* Top Header */}
+        <header className="flex flex-wrap items-center justify-between gap-4 pb-6 mb-6 border-b border-slate-200/80">
+          <div>
+            <div className="flex items-center gap-2">
+              <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+              <span className="text-xs font-bold text-emerald-600 uppercase tracking-wider">Hệ thống đang hoạt động ổn định</span>
+            </div>
+            <h2 className="text-2xl font-black text-slate-900 tracking-tight mt-0.5">
+              {activeTab === 'dashboard' && 'Bảng điều khiển Tổng quan'}
+              {activeTab === 'plots' && 'Quản lý Vùng trồng & Chăn nuôi'}
+              {activeTab === 'tasks' && 'Lập kế hoạch & Phân công Công việc'}
+              {activeTab === 'harvest' && 'Ghi nhận Nông sản & Quản lý Kho'}
+              {activeTab === 'iot' && 'Trạm quan trắc IoT & Tự động hóa'}
+            </h2>
+          </div>
 
-        <p className="text-xs text-gray-400 text-center mt-2">
-          * Dữ liệu gửi lên sẽ tự động cộng dồn vào Hệ thống Kho vật tư của Nông trại.
-        </p>
-      </form>
+          {/* User Profile & Notification Badge */}
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-3 bg-white px-4 py-2 rounded-2xl border border-slate-200 shadow-sm">
+              <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center font-bold text-emerald-700 text-xs">
+                {currentUser.full_name.charAt(0)}
+              </div>
+              <div className="text-left">
+                <p className="text-xs font-bold text-slate-800 leading-none">{currentUser.full_name}</p>
+                <p className="text-[10px] text-slate-500 mt-1 font-medium">{currentUser.role === 'MANAGER' ? 'Quản lý nông trại' : 'Nhân viên nông trại'}</p>
+              </div>
+            </div>
+
+            <button
+              onClick={() => setNotifications(prev => prev.map(n => ({ ...n, is_read: true })))}
+              className="relative p-2.5 bg-white border border-slate-200 rounded-2xl shadow-sm hover:bg-slate-50 transition"
+              title="Thông báo hệ thống"
+            >
+              <Bell className="w-5 h-5 text-slate-600" />
+              {unreadCount > 0 && (
+                <span className="absolute -top-1 -right-1 bg-rose-500 text-white text-[10px] font-black w-5 h-5 rounded-full flex items-center justify-center shadow-md animate-bounce">
+                  {unreadCount}
+                </span>
+              )}
+            </button>
+          </div>
+        </header>
+
+        {/* TAB 1: DASHBOARD */}
+        {activeTab === 'dashboard' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Khu vực canh tác</span>
+                  <div className="p-2.5 bg-emerald-50 text-emerald-600 rounded-2xl"></div>
+                </div>
+                <p className="text-3xl font-black text-slate-900 mt-3">{plots.length} <span className="text-sm font-normal text-slate-500">Khu vực</span></p>
+                <div className="mt-3 flex items-center gap-1.5 text-xs text-emerald-600 font-semibold bg-emerald-50/80 px-2.5 py-1 rounded-lg w-fit">
+                  <span>Tổng diện tích: {plots.reduce((a, b) => a + b.area_m2, 0)} m²</span>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Công việc cần làm</span>
+                  <div className="p-2.5 bg-blue-50 text-blue-600 rounded-2xl"><ClipboardList className="w-5 h-5" /></div>
+                </div>
+                <p className="text-3xl font-black text-slate-900 mt-3">
+                  {tasks.filter(t => t.status !== 'HOAN_THANH' && t.status !== 'DA_HUY').length} <span className="text-sm font-normal text-slate-500">việc</span>
+                </p>
+                <div className="mt-3 text-xs text-blue-600 font-semibold bg-blue-50/80 px-2.5 py-1 rounded-lg w-fit">
+                  <span>Đã hoàn thành: {tasks.filter(t => t.status === 'HOAN_THANH').length}</span>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Kho thành phẩm</span>
+                  <div className="p-2.5 bg-amber-50 text-amber-600 rounded-2xl"><Package className="w-5 h-5" /></div>
+                </div>
+                <p className="text-3xl font-black text-slate-900 mt-3">
+                  {inventory.reduce((a, b) => a + b.quantity_kg, 0)} <span className="text-sm font-normal text-slate-500">kg</span>
+                </p>
+                <div className="mt-3 text-xs text-amber-600 font-semibold bg-amber-50/80 px-2.5 py-1 rounded-lg w-fit">
+                  <span>{inventory.length} loại nông sản</span>
+                </div>
+              </div>
+
+              <div className="bg-white p-6 rounded-3xl border border-slate-200/80 shadow-sm hover:shadow-md transition">
+                <div className="flex justify-between items-center">
+                  <span className="text-xs font-bold text-slate-400 uppercase tracking-wider">Trạng thái IoT</span>
+                  <div className="p-2.5 bg-purple-50 text-purple-600 rounded-2xl"><Droplets className={`w-5 h-5 ${irrigationActive ? 'animate-bounce' : ''}`} /></div>
+                </div>
+                <p className="text-lg font-black text-slate-900 mt-3">
+                  {irrigationActive ? 'ĐANG BẬT TƯỚI' : 'Giám sát ổn định'}
+                </p>
+                <div className="mt-3 text-xs text-purple-600 font-semibold bg-purple-50/80 px-2.5 py-1 rounded-lg w-fit">
+                  <span>Độ ẩm đất: {readings[0]?.soil_moisture}%</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Notification Stream */}
+            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+              <h3 className="font-extrabold text-base text-slate-900 mb-4 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-amber-500" /> Dòng sự kiện & Cảnh báo thời gian thực
+              </h3>
+              <div className="space-y-3">
+                {notifications.map(n => (
+                  <div key={n.notification_id} className="p-4 rounded-2xl bg-slate-50/80 border border-slate-200/60 flex justify-between items-start gap-4 hover:bg-slate-100/50 transition">
+                    <div>
+                      <p className="font-bold text-sm text-slate-900">{n.title}</p>
+                      <p className="text-xs text-slate-600 mt-1">{n.content}</p>
+                    </div>
+                    <span className="text-[11px] font-semibold text-slate-400 whitespace-nowrap bg-white px-2.5 py-1 rounded-lg border border-slate-200">{n.created_at}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 2: PLOTS */}
+        {activeTab === 'plots' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            {plots.map(plot => (
+              <div key={plot.plot_id} className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 flex flex-col justify-between hover:shadow-md transition">
+                <div>
+                  <div className="flex justify-between items-start gap-3">
+                    <div>
+                      <span className="text-[11px] font-mono font-bold text-emerald-600 bg-emerald-50 px-2 py-0.5 rounded-md">{plot.plot_id}</span>
+                      <h3 className="text-lg font-black text-slate-900 mt-2">{plot.plot_name}</h3>
+                    </div>
+                    <span className={`px-3 py-1 rounded-full text-xs font-bold border ${PLOT_STATUS_MAP[plot.status].color}`}>
+                      {PLOT_STATUS_MAP[plot.status].label}
+                    </span>
+                  </div>
+
+                  <div className="mt-5 grid grid-cols-2 gap-3.5 text-xs bg-slate-50/80 p-4 rounded-2xl border border-slate-200/60">
+                    <div>
+                      <p className="text-slate-400 font-medium">Đối tượng canh tác</p>
+                      <p className="font-bold text-slate-800 mt-0.5">{plot.crop.crop_name}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 font-medium">Giai đoạn sinh trưởng</p>
+                      <p className="font-bold text-slate-800 mt-0.5">{plot.crop.growth_stage}</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 font-medium">Diện tích khu vực</p>
+                      <p className="font-bold text-slate-800 mt-0.5">{plot.area_m2} m²</p>
+                    </div>
+                    <div>
+                      <p className="text-slate-400 font-medium">Sản lượng dự kiến</p>
+                      <p className="font-bold text-emerald-700 mt-0.5">{plot.expected_yield_kg} kg</p>
+                    </div>
+                  </div>
+                </div>
+
+                {currentUser.role === 'MANAGER' && (
+                  <div className="mt-6 pt-4 border-t border-slate-100 flex justify-between items-center">
+                    <span className="text-xs text-slate-500 font-medium">Cập nhật vòng đời (Statechart):</span>
+                    <button
+                      onClick={() => handleNextPlotStatus(plot.plot_id)}
+                      className="flex items-center gap-2 text-xs bg-emerald-600 hover:bg-emerald-700 text-white font-bold px-4 py-2 rounded-xl shadow-md shadow-emerald-600/20 transition"
+                    >
+                      <RefreshCw className="w-3.5 h-3.5" /> Chuyển giai đoạn tiếp
+                    </button>
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* TAB 3: TASKS */}
+        {activeTab === 'tasks' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 h-fit">
+              <h3 className="font-extrabold text-base text-slate-900 mb-4 flex items-center gap-2">
+                <Plus className="w-4 h-4 text-emerald-600" /> Phân công công việc (UC04)
+              </h3>
+
+              {currentUser.role !== 'MANAGER' ? (
+                <div className="p-4 bg-amber-50 border border-amber-200 rounded-2xl text-xs text-amber-800 font-medium">
+                  Bạn đang đăng nhập quyền Nhân viên. Chỉ Quản lý mới có quyền lập kế hoạch và phân công công việc.
+                </div>
+              ) : (
+                <form onSubmit={handleAssignTask} className="space-y-4 text-xs font-medium">
+                  <div>
+                    <label className="block text-slate-600 mb-1.5 font-bold">Lô đất / Chuồng trại</label>
+                    <select
+                      value={newTask.plot_id}
+                      onChange={e => setNewTask({ ...newTask, plot_id: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                    >
+                      {plots.map(p => (
+                        <option key={p.plot_id} value={p.plot_id}>{p.plot_name}</option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 mb-1.5 font-bold">Nhân viên thực hiện</label>
+                    <select
+                      value={newTask.worker_id}
+                      onChange={e => setNewTask({ ...newTask, worker_id: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium focus:ring-2 focus:ring-emerald-500 outline-none"
+                    >
+                      {SEED_USERS.filter(u => u.role === 'WORKER').map(w => (
+                        <option key={w.user_id} value={w.user_id}>
+                          {w.full_name} (Giới hạn: {w.max_tasks_per_day} việc/ngày)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-600 mb-1.5 font-bold">Loại công việc</label>
+                      <select
+                        value={newTask.task_type}
+                        onChange={e => setNewTask({ ...newTask, task_type: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium outline-none"
+                      >
+                        <option value="TUOI_NUOC">Tưới nước</option>
+                        <option value="BON_PHAN">Bón phân</option>
+                        <option value="TIEM_PHONG">Tiêm phòng</option>
+                        <option value="KHAC">Khác</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 mb-1.5 font-bold">Ngày hạn</label>
+                      <input
+                        type="date"
+                        value={newTask.due_date}
+                        onChange={e => setNewTask({ ...newTask, due_date: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-3 gap-3">
+                    <div className="col-span-2">
+                      <label className="block text-slate-600 mb-1.5 font-bold">Vật tư kho</label>
+                      <select
+                        value={newTask.material_id}
+                        onChange={e => setNewTask({ ...newTask, material_id: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium outline-none"
+                      >
+                        <option value="">-- Không dùng --</option>
+                        {materials.map(m => (
+                          <option key={m.material_id} value={m.material_id}>{m.material_name}</option>
+                        ))}
+                      </select>
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 mb-1.5 font-bold">Số lượng</label>
+                      <input
+                        type="number"
+                        min="0"
+                        value={newTask.material_qty}
+                        onChange={e => setNewTask({ ...newTask, material_qty: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 font-medium outline-none"
+                      />
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 mb-1.5 font-bold">Ghi chú nghiệp vụ</label>
+                    <input
+                      type="text"
+                      placeholder="VD: Bón lót gốc buổi sáng..."
+                      value={newTask.note}
+                      onChange={e => setNewTask({ ...newTask, note: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 font-medium outline-none"
+                    />
+                  </div>
+
+                  {overloadWarning && (
+                    <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-[11px] text-rose-700 flex items-start gap-2.5 font-semibold">
+                      <ShieldAlert className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                      <span>{overloadWarning}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition text-xs"
+                  >
+                    Xác nhận phân công công việc
+                  </button>
+                </form>
+              )}
+            </div>
+
+            <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+              <h3 className="font-extrabold text-base text-slate-900 mb-4">
+                Danh sách Công việc ({currentUser.role === 'WORKER' ? 'Việc của tôi' : 'Toàn hệ thống'})
+              </h3>
+              <div className="space-y-3.5">
+                {tasks
+                  .filter(t => currentUser.role === 'MANAGER' || t.worker_id === currentUser.user_id)
+                  .map(task => {
+                    const worker = SEED_USERS.find(u => u.user_id === task.worker_id);
+                    const plot = plots.find(p => p.plot_id === task.plot_id);
+                    return (
+                      <div key={task.task_id} className="p-5 border border-slate-200/80 rounded-2xl flex flex-wrap justify-between items-center gap-4 bg-slate-50/50 hover:bg-white transition">
+                        <div>
+                          <div className="flex items-center gap-2.5">
+                            <span className="font-bold text-slate-900 text-sm">{TASK_TYPE_LABELS[task.task_type]}</span>
+                            <span className={`px-2.5 py-0.5 rounded-full text-[11px] font-extrabold ${TASK_STATUS_MAP[task.status].color}`}>
+                              {TASK_STATUS_MAP[task.status].label}
+                            </span>
+                          </div>
+                          <p className="text-xs text-slate-600 mt-1 font-medium">
+                            Khu vực: <strong className="text-slate-800">{plot?.plot_name}</strong> • Nhân sự: <strong className="text-emerald-700">{worker?.full_name}</strong>
+                          </p>
+                          <p className="text-[11px] text-slate-400 mt-1">
+                            Hạn hoàn thành: <span className="font-semibold text-slate-600">{task.due_date}</span> {task.note && `• Ghi chú: ${task.note}`}
+                          </p>
+                        </div>
+
+                        <div className="flex items-center gap-2">
+                          {task.status === 'DA_GIAO' && (
+                            <button
+                              onClick={() => handleUpdateTaskStatus(task.task_id, 'DANG_THUC_HIEN')}
+                              className="px-3.5 py-2 bg-amber-500 hover:bg-amber-600 text-white text-xs font-bold rounded-xl shadow-sm transition"
+                            >
+                              Bắt đầu làm
+                            </button>
+                          )}
+                          {task.status === 'DANG_THUC_HIEN' && (
+                            <button
+                              onClick={() => handleUpdateTaskStatus(task.task_id, 'HOAN_THANH')}
+                              className="px-3.5 py-2 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-xl shadow-sm transition"
+                            >
+                              Hoàn thành
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 4: HARVEST & INVENTORY */}
+        {activeTab === 'harvest' && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+              <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+                <h3 className="font-extrabold text-base text-slate-900 mb-4">Ghi nhận Thu hoạch (UC05)</h3>
+                <form onSubmit={handleSaveHarvest} className="space-y-4 text-xs font-medium">
+                  <div>
+                    <label className="block text-slate-600 mb-1.5 font-bold">Khu vực thu hoạch</label>
+                    <select
+                      value={newHarvest.plot_id}
+                      onChange={e => setNewHarvest({ ...newHarvest, plot_id: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none font-medium"
+                    >
+                      {plots.map(p => (
+                        <option key={p.plot_id} value={p.plot_id}>
+                          {p.plot_name} (Dự kiến: {p.expected_yield_kg}kg)
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className="block text-slate-600 mb-1.5 font-bold">Sản lượng thực tế</label>
+                      <input
+                        type="number"
+                        required
+                        min="1"
+                        placeholder="VD: 600 kg"
+                        value={newHarvest.quantity_kg}
+                        onChange={e => setNewHarvest({ ...newHarvest, quantity_kg: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none font-medium"
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-slate-600 mb-1.5 font-bold">Chất lượng</label>
+                      <select
+                        value={newHarvest.quality_grade}
+                        onChange={e => setNewHarvest({ ...newHarvest, quality_grade: e.target.value })}
+                        className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none font-medium"
+                      >
+                        <option value="Loại 1">Loại 1 (Cao cấp)</option>
+                        <option value="Loại 2">Loại 2 (Thường)</option>
+                      </select>
+                    </div>
+                  </div>
+
+                  <div>
+                    <label className="block text-slate-600 mb-1.5 font-bold">Ghi chú đợt thu</label>
+                    <input
+                      type="text"
+                      placeholder="VD: Thu hoạch đợt 2 buổi sáng..."
+                      value={newHarvest.note}
+                      onChange={e => setNewHarvest({ ...newHarvest, note: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3.5 py-2.5 outline-none font-medium"
+                    />
+                  </div>
+
+                  {harvestAlert && (
+                    <div className="p-3.5 bg-rose-50 border border-rose-200 rounded-2xl text-[11px] text-rose-700 flex items-start gap-2.5 font-semibold">
+                      <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5 text-rose-600" />
+                      <span>{harvestAlert}</span>
+                    </div>
+                  )}
+
+                  <button
+                    type="submit"
+                    className="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-emerald-600/20 transition text-xs"
+                  >
+                    Lưu thông tin & Cập nhật kho
+                  </button>
+                </form>
+              </div>
+
+              <div className="lg:col-span-2 space-y-6">
+                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+                  <h3 className="font-extrabold text-base text-slate-900 mb-4">Kho Nông sản Thành phẩm (Inventory)</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider">
+                        <tr>
+                          <th className="py-3 px-4">Tên nông sản</th>
+                          <th className="py-3 px-4">Chất lượng</th>
+                          <th className="py-3 px-4">Tồn kho hiện tại</th>
+                          <th className="py-3 px-4">Cập nhật</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {inventory.map(item => (
+                          <tr key={item.item_id} className="hover:bg-slate-50/50">
+                            <td className="py-3.5 px-4 font-bold text-slate-900">{item.product_name}</td>
+                            <td className="py-3.5 px-4">
+                              <span className="px-2.5 py-1 rounded-lg bg-emerald-50 text-emerald-700 font-bold text-[11px] border border-emerald-200">
+                                {item.quality_grade}
+                              </span>
+                            </td>
+                            <td className="py-3.5 px-4 font-black text-emerald-600 text-sm">{item.quantity_kg} kg</td>
+                            <td className="py-3.5 px-4 text-slate-400 text-[11px]">{item.last_updated}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+
+                <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+                  <h3 className="font-extrabold text-base text-slate-900 mb-4">Kho Vật tư Nông nghiệp (Materials)</h3>
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-xs text-left">
+                      <thead className="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider">
+                        <tr>
+                          <th className="py-3 px-4">Mã VT</th>
+                          <th className="py-3 px-4">Tên vật tư</th>
+                          <th className="py-3 px-4">Đơn vị</th>
+                          <th className="py-3 px-4">Tồn kho</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-100 font-medium">
+                        {materials.map(m => (
+                          <tr key={m.material_id} className="hover:bg-slate-50/50">
+                            <td className="py-3.5 px-4 font-mono font-bold text-slate-500">{m.material_id}</td>
+                            <td className="py-3.5 px-4 font-bold text-slate-900">{m.material_name}</td>
+                            <td className="py-3.5 px-4 text-slate-600">{m.unit}</td>
+                            <td className="py-3.5 px-4 font-black text-blue-600 text-sm">{m.stock_qty}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* TAB 5: IOT SENSORS */}
+        {activeTab === 'iot' && (
+          <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6 h-fit">
+              <h3 className="font-extrabold text-base text-slate-900 mb-1 flex items-center gap-2">
+                <Activity className="w-4 h-4 text-blue-600" /> Giả lập Cảm biến IoT (S001)
+              </h3>
+              <p className="text-[11px] text-slate-500 mb-4 font-medium">
+                Ngưỡng kích hoạt tưới tự động: <strong className="text-slate-800">Độ ẩm đất &lt; 30%</strong>
+              </p>
+
+              <form onSubmit={handleReceiveIoTData} className="space-y-3.5 text-xs font-medium">
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-600 mb-1 font-bold">Nhiệt độ (°C)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={simSensor.temperature}
+                      onChange={e => setSimSensor({ ...simSensor, temperature: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 mb-1 font-bold">Độ ẩm KK (%)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={simSensor.humidity}
+                      onChange={e => setSimSensor({ ...simSensor, humidity: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <div>
+                    <label className="block text-slate-600 mb-1 font-bold">Độ ẩm đất (%)</label>
+                    <input
+                      type="number"
+                      step="0.1"
+                      value={simSensor.soil_moisture}
+                      onChange={e => setSimSensor({ ...simSensor, soil_moisture: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none font-bold text-blue-600"
+                    />
+                  </div>
+                  <div>
+                    <label className="block text-slate-600 mb-1 font-bold">Ánh sáng (Lux)</label>
+                    <input
+                      type="number"
+                      value={simSensor.light_level}
+                      onChange={e => setSimSensor({ ...simSensor, light_level: e.target.value })}
+                      className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 py-2.5 outline-none"
+                    />
+                  </div>
+                </div>
+
+                <button
+                  type="submit"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-xl shadow-lg shadow-blue-600/20 transition text-xs"
+                >
+                  Gửi dữ liệu Sensor mô phỏng
+                </button>
+              </form>
+
+              {/* Trạng thái van tưới */}
+              <div className={`mt-5 p-5 rounded-2xl border transition-all ${irrigationActive ? 'bg-blue-50/80 border-blue-300 text-blue-900 shadow-sm' : 'bg-slate-50 border-slate-200/80 text-slate-600'}`}>
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs flex items-center gap-2">
+                    <Droplets className={`w-5 h-5 ${irrigationActive ? 'text-blue-600 animate-pulse' : 'text-slate-400'}`} />
+                    Van tưới tự động Lô A1
+                  </span>
+                  <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${irrigationActive ? 'bg-blue-600 text-white shadow-md' : 'bg-slate-200 text-slate-700'}`}>
+                    {irrigationActive ? 'ĐANG BẬT' : 'ĐÃ TẮT'}
+                  </span>
+                </div>
+                {irrigationActive && (
+                  <button
+                    onClick={() => setIrrigationActive(false)}
+                    className="mt-3.5 w-full py-2 bg-white border border-blue-300 rounded-xl text-xs font-bold text-blue-700 hover:bg-blue-50 transition shadow-sm"
+                  >
+                    Tắt thủ công
+                  </button>
+                )}
+              </div>
+            </div>
+
+            <div className="lg:col-span-2 bg-white rounded-3xl border border-slate-200/80 shadow-sm p-6">
+              <h3 className="font-extrabold text-base text-slate-900 mb-4">Lịch sử Dữ liệu Cảm biến IoT (Sensor Readings)</h3>
+              <div className="overflow-x-auto">
+                <table className="w-full text-xs text-left">
+                  <thead className="bg-slate-50 text-slate-400 font-bold uppercase tracking-wider">
+                    <tr>
+                      <th className="py-3 px-4">Thời gian</th>
+                      <th className="py-3 px-4">Vị trí</th>
+                      <th className="py-3 px-4">Nhiệt độ</th>
+                      <th className="py-3 px-4">Độ ẩm KK</th>
+                      <th className="py-3 px-4">Độ ẩm đất</th>
+                      <th className="py-3 px-4">Ánh sáng</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100 font-medium">
+                    {readings.map(r => (
+                      <tr key={r.reading_id} className="hover:bg-slate-50/50">
+                        <td className="py-3.5 px-4 text-[11px] text-slate-400 font-mono">{r.timestamp}</td>
+                        <td className="py-3.5 px-4 font-bold text-slate-800">{r.location}</td>
+                        <td className="py-3.5 px-4">{r.temperature}°C</td>
+                        <td className="py-3.5 px-4">{r.humidity}%</td>
+                        <td className={`py-3.5 px-4 font-black ${r.soil_moisture < 30 ? 'text-rose-600 bg-rose-50 px-2 py-0.5 rounded-lg w-fit' : 'text-emerald-600'}`}>
+                          {r.soil_moisture}%
+                        </td>
+                        <td className="py-3.5 px-4">{r.light_level} Lux</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          </div>
+        )}
+      </main>
     </div>
   );
 }
